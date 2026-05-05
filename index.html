@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visitas de Fiscalização – SilverNet</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+  :root {
+    --amarelo: #FFD700;
+    --amarelo-escuro: #E6B800;
+    --preto: #111111;
+    --cinza-escuro: #1A1A1A;
+    --cinza-medio: #2A2A2A;
+    --cinza-claro: #3A3A3A;
+    --cinza-borda: #444;
+    --branco: #F5F5F5;
+    --texto-muted: #999;
+    --verde: #4CAF50;
+    --vermelho: #E53935;
+    --azul: #1E88E5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--preto);
+    color: var(--branco);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--cinza-escuro);
+    border-bottom: 3px solid var(--amarelo);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--amarelo);
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--branco); }
+  header .subtitulo {
+    font-size: 12px;
+    color: var(--texto-muted);
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── LAYOUT ── */
+  .container {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 61px);
+  }
+
+  /* ── PAINEL ESQUERDO (FORMULÁRIO) ── */
+  .painel-form {
+    background: var(--cinza-escuro);
+    border-right: 1px solid var(--cinza-borda);
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 61px);
+  }
+
+  .form-titulo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--amarelo);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--cinza-claro);
+  }
+
+  .grupo-form { margin-bottom: 14px; }
+  .grupo-form label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--texto-muted);
+    margin-bottom: 5px;
+  }
+  .grupo-form input,
+  .grupo-form select,
+  .grupo-form textarea {
+    width: 100%;
+    background: var(--cinza-medio);
+    border: 1px solid var(--cinza-borda);
+    color: var(--branco);
+    padding: 9px 12px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .grupo-form input:focus,
+  .grupo-form select:focus,
+  .grupo-form textarea:focus {
+    border-color: var(--amarelo);
+  }
+  .grupo-form textarea { resize: vertical; min-height: 60px; }
+  .grupo-form select option { background: #2A2A2A; }
+
+  .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn-adicionar {
+    width: 100%;
+    background: var(--amarelo);
+    color: var(--preto);
+    border: none;
+    padding: 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-adicionar:hover { background: var(--amarelo-escuro); }
+  .btn-adicionar:active { transform: scale(0.98); }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--cinza-claro);
+    margin: 20px 0;
+  }
+
+  /* ── IMPORTAR TEXTO ── */
+  .importar-area textarea {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    min-height: 100px;
+  }
+  .btn-importar {
+    width: 100%;
+    background: transparent;
+    color: var(--amarelo);
+    border: 1px solid var(--amarelo);
+    padding: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.2s;
+  }
+  .btn-importar:hover { background: var(--amarelo); color: var(--preto); }
+
+  /* ── PAINEL DIREITO (TABELA) ── */
+  .painel-tabela {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 61px);
+  }
+
+  .topo-tabela {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .topo-tabela h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--amarelo);
+  }
+  .acoes-topo { display: flex; gap: 8px; }
+
+  .btn-acao {
+    background: var(--cinza-medio);
+    border: 1px solid var(--cinza-borda);
+    color: var(--branco);
+    padding: 7px 14px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-acao:hover { border-color: var(--amarelo); color: var(--amarelo); }
+  .btn-acao.danger:hover { border-color: var(--vermelho); color: var(--vermelho); }
+
+  /* ── BLOCO DE DATA ── */
+  .bloco-data { margin-bottom: 32px; }
+
+  .header-data {
+    background: var(--amarelo);
+    color: var(--preto);
+    padding: 8px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 0;
+  }
+
+  /* ── TABELA ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  thead tr {
+    background: var(--amarelo);
+    color: var(--preto);
+  }
+  thead th {
+    padding: 8px 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: left;
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--cinza-claro);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--cinza-medio); }
+  tbody td {
+    padding: 9px 10px;
+    vertical-align: top;
+    color: var(--branco);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  tbody td:first-child {
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--amarelo);
+  }
+  tbody td:nth-child(2) {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .td-nome { font-weight: 600; }
+  .td-endereco { max-width: 200px; }
+  .td-motivo { color: #FFC107; font-weight: 500; }
+  .td-info { color: #80CBC4; font-style: italic; }
+
+  .btn-excluir-linha {
+    background: none;
+    border: none;
+    color: var(--texto-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: color 0.2s;
+  }
+  .btn-excluir-linha:hover { color: var(--vermelho); }
+
+  /* ── VAZIO ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--texto-muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--verde);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── PRINT ── */
+  /* ── MODAL CONFIRMAÇÃO ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.ativo { display: flex; }
+  .modal-box {
+    background: var(--cinza-escuro);
+    border: 1px solid var(--cinza-borda);
+    border-top: 3px solid var(--vermelho);
+    border-radius: 8px;
+    padding: 28px 32px;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+  }
+  .modal-box .modal-icon { font-size: 32px; margin-bottom: 10px; }
+  .modal-box p {
+    font-size: 14px;
+    color: var(--branco);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .modal-btns { display: flex; gap: 10px; justify-content: center; }
+  .modal-btn-cancel {
+    flex: 1;
+    background: var(--cinza-claro);
+    border: 1px solid var(--cinza-borda);
+    color: var(--branco);
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+  .modal-btn-cancel:hover { background: #555; }
+  .modal-btn-confirm {
+    flex: 1;
+    background: var(--vermelho);
+    border: none;
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
+  .modal-btn-confirm:hover { background: #c62828; }
+
+  @media print {
+    .painel-form, header .acoes-topo, .btn-excluir-linha, .acoes-topo { display: none !important; }
+    .container { grid-template-columns: 1fr; }
+    .painel-tabela { max-height: none; overflow: visible; padding: 0; }
+    body { background: white; color: black; }
+    .header-data { background: #FFD700 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead tr { background: #FFD700 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tbody td { color: black !important; }
+    .td-motivo, .td-info { color: black !important; }
+    table { font-size: 10px; }
+    thead th, tbody td { padding: 5px 7px; }
+  }
+
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; }
+    .painel-form { max-height: none; border-right: none; border-bottom: 1px solid var(--cinza-borda); }
+    .painel-tabela { max-height: none; }
+    table { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Silver<span>Net</span> Tecnologia</div>
+    <div class="subtitulo">Sistema de Visitas de Fiscalização</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ══ PAINEL ESQUERDO: FORMULÁRIO ══ -->
+  <aside class="painel-form">
+    <div class="form-titulo">➕ Nova Visita</div>
+
+    <div class="linha-dupla">
+      <div class="grupo-form">
+        <label>Data da Visita</label>
+        <input type="date" id="inp-data">
+      </div>
+      <div class="grupo-form">
+        <label>Hora</label>
+        <input type="time" id="inp-hora">
+      </div>
+    </div>
+
+    <div class="grupo-form">
+      <label>Nome do Técnico</label>
+      <input type="text" id="inp-tecnico" placeholder="Ex: VALMI APARECIDO" list="lista-tecnicos">
+      <datalist id="lista-tecnicos"></datalist>
+    </div>
+
+    <hr class="divider" style="margin:10px 0 14px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#FFC107;margin-bottom:10px;">📦 Dados da Caixa / CTO</div>
+
+    <div class="grupo-form">
+      <label>Caixa (CTO)</label>
+      <input type="text" id="inp-caixa" placeholder="Ex: JB P27_S07_CX07_97-112">
+    </div>
+
+    <div class="grupo-form">
+      <label>Endereço da Caixa</label>
+      <input type="text" id="inp-end-caixa" placeholder="Ex: R. Itamonte, 1503 - Vila Medeiros">
+    </div>
+
+    <div class="linha-dupla">
+      <div class="grupo-form">
+        <label>Porta</label>
+        <input type="text" id="inp-porta" placeholder="Ex: 3">
+      </div>
+      <div class="grupo-form">
+        <label>Lacre</label>
+        <input type="text" id="inp-lacre" placeholder="Ex: 2589 / SEM LACRE">
+      </div>
+    </div>
+
+    <hr class="divider" style="margin:10px 0 14px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#80CBC4;margin-bottom:10px;">👤 Dados do Cliente</div>
+
+    <div class="grupo-form">
+      <label>Nome do Cliente</label>
+      <input type="text" id="inp-cliente" placeholder="Nome completo do cliente">
+    </div>
+
+    <div class="grupo-form">
+      <label>Endereço do Cliente</label>
+      <input type="text" id="inp-endereco" placeholder="Rua, número, bairro, CEP...">
+    </div>
+
+    <div class="grupo-form">
+      <label>Telefone</label>
+      <input type="text" id="inp-telefone" placeholder="(11) 9xxxx-xxxx">
+    </div>
+
+    <div class="grupo-form">
+      <label>Motivo da Abertura da Ordem</label>
+      <select id="inp-motivo">
+        <option value="">Selecione...</option>
+        <option>INSTALAÇÃO - INTERNET BANDA LARGA</option>
+        <option>REPARO - SEM CONEXÃO</option>
+        <option>REPARO - LENTIDÃO</option>
+        <option>REPARO - QUEDA INTERMITENTE</option>
+        <option>REPARO - SEM SINAL</option>
+        <option>VISITA TÉCNICA</option>
+        <option value="outro">Outro (digitar abaixo)</option>
+      </select>
+    </div>
+
+    <div class="grupo-form" id="grupo-motivo-outro" style="display:none">
+      <label>Motivo (personalizado)</label>
+      <input type="text" id="inp-motivo-outro" placeholder="Descreva o motivo...">
+    </div>
+
+    <div class="grupo-form">
+      <label>Informação do Técnico</label>
+      <textarea id="inp-info-tecnico" placeholder="Ex: Cabo atenuado, conector interno, carga alta..."></textarea>
+    </div>
+
+    <button class="btn-adicionar" onclick="adicionarVisita()">✚ Adicionar Visita</button>
+
+    <hr class="divider">
+
+    <!-- IMPORTAR LOTE -->
+    <div class="form-titulo">📋 Importar do Sistema</div>
+    <p style="font-size:11px; color:var(--texto-muted); margin-bottom:12px; line-height:1.6;">
+      Cole uma ou mais linhas copiadas direto do sistema (planilha/relatório). Cada linha vira uma visita automaticamente — data, técnico, cliente, endereço, telefone e motivo são preenchidos sozinhos.
+    </p>
+    <div class="importar-area grupo-form">
+      <label>Linhas do sistema (Ctrl+C → Ctrl+V)</label>
+      <textarea id="inp-importar" rows="5" placeholder="Cole aqui as linhas copiadas do sistema:
+
+01/05/2026 12:12:04	LUCCAS DE OLIVEIRA	BIANCA DE ALMEIDA SANTOS	Endereço: Rua Bertelli...	(11) 96406-4600	REPARO- SEM CONEXÃO
+01/05/2026 10:06:31	LUCCAS DE OLIVEIRA	SEVERINA GOMES DA SILVA	Endereço: Rua Tenente...	(11) 98114-1366	REPARO- SEM CONEXÃO"></textarea>
+    </div>
+    <button class="btn-importar" onclick="importarCliente()">⚡ Importar Visitas</button>
+  </aside>
+
+  <!-- ══ PAINEL DIREITO: TABELA ══ -->
+  <main class="painel-tabela">
+    <div class="topo-tabela">
+      <h2>📋 Registro de Visitas</h2>
+      <div class="acoes-topo">
+        <button class="btn-acao" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn-acao" onclick="exportarJSON()">⬇️ Exportar</button>
+        <button class="btn-acao danger" onclick="limparTudo()">🗑️ Limpar Tudo</button>
+      </div>
+    </div>
+
+    <div id="area-visitas"></div>
+  </main>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <p id="modal-mensagem"></p>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="modal-btn-confirm" id="modal-btn-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ──────────────────────────────────────────
+// ESTADO
+// ──────────────────────────────────────────
+let visitas = JSON.parse(localStorage.getItem('sn_visitas') || '[]');
+
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Data padrão = hoje
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('inp-data').value = hoje;
+
+  // Hora padrão = agora
+  const agora = new Date();
+  document.getElementById('inp-hora').value =
+    String(agora.getHours()).padStart(2,'0') + ':' + String(agora.getMinutes()).padStart(2,'0');
+
+  atualizarDatalist();
+  renderizarVisitas();
+
+  document.getElementById('inp-motivo').addEventListener('change', function() {
+    document.getElementById('grupo-motivo-outro').style.display =
+      this.value === 'outro' ? 'block' : 'none';
+  });
+});
+
+// ──────────────────────────────────────────
+// ADICIONAR VISITA
+// ──────────────────────────────────────────
+function adicionarVisita() {
+  const data      = document.getElementById('inp-data').value;
+  const hora      = document.getElementById('inp-hora').value;
+  const tecnico   = document.getElementById('inp-tecnico').value.trim().toUpperCase();
+  const caixa     = document.getElementById('inp-caixa').value.trim().toUpperCase();
+  const endCaixa  = document.getElementById('inp-end-caixa').value.trim();
+  const porta     = document.getElementById('inp-porta').value.trim();
+  const lacre     = document.getElementById('inp-lacre').value.trim().toUpperCase();
+  const cliente   = document.getElementById('inp-cliente').value.trim().toUpperCase();
+  const endereco  = document.getElementById('inp-endereco').value.trim();
+  const telefone  = document.getElementById('inp-telefone').value.trim();
+  const motivoSel = document.getElementById('inp-motivo').value;
+  const motivoOut = document.getElementById('inp-motivo-outro').value.trim();
+  const motivo    = motivoSel === 'outro' ? motivoOut : motivoSel;
+  const infoTec   = document.getElementById('inp-info-tecnico').value.trim();
+
+  if (!data || !tecnico || !cliente) {
+    toast('⚠️ Preencha ao menos Data, Técnico e Cliente.', '#E53935');
+    return;
+  }
+
+  const visita = {
+    id: Date.now(),
+    data,
+    hora,
+    tecnico,
+    caixa,
+    endCaixa,
+    porta,
+    lacre,
+    cliente,
+    endereco,
+    telefone,
+    motivo,
+    infoTecnico: infoTec
+  };
+
+  visitas.push(visita);
+  salvar();
+  renderizarVisitas();
+  atualizarDatalist();
+  limparFormulario();
+  toast('✅ Visita adicionada com sucesso!');
+}
+
+// ──────────────────────────────────────────
+// RENDERIZAR
+// ──────────────────────────────────────────
+function renderizarVisitas() {
+  const area = document.getElementById('area-visitas');
+
+  if (visitas.length === 0) {
+    area.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📂</div>
+        <p>Nenhuma visita registrada ainda.<br>Use o formulário ao lado para adicionar.</p>
+      </div>`;
+    return;
+  }
+
+  // Agrupar por data
+  const grupos = {};
+  visitas.forEach(v => {
+    if (!grupos[v.data]) grupos[v.data] = [];
+    grupos[v.data].push(v);
+  });
+
+  // Ordenar datas decrescente
+  const datas = Object.keys(grupos).sort((a,b) => b.localeCompare(a));
+
+  area.innerHTML = datas.map(data => {
+    const lista = grupos[data].sort((a,b) => {
+      // Ordenar por hora dentro do grupo
+      return (b.hora || '').localeCompare(a.hora || '');
+    });
+    const [ano, mes, dia] = data.split('-');
+    const dataFormatada = `${dia}/${mes}/${ano}`;
+    const totalVisitas = lista.length;
+
+    const linhas = lista.map(v => `
+      <tr>
+        <td>${dataFormatada} ${v.hora || ''}</td>
+        <td>${v.tecnico}</td>
+        <td class="td-caixa">${v.caixa || '–'}</td>
+        <td class="td-endereco" style="font-size:11px;color:#aaa">${v.endCaixa || '–'}</td>
+        <td style="white-space:nowrap">${v.porta ? `Porta ${v.porta}` : '–'}</td>
+        <td style="white-space:nowrap;color:${v.lacre === 'SEM LACRE' ? '#E57373' : '#A5D6A7'}">${v.lacre || '–'}</td>
+        <td class="td-nome">${v.cliente}</td>
+        <td class="td-endereco">${v.endereco || '–'}</td>
+        <td>${formatarTel(v.telefone)}</td>
+        <td class="td-motivo">${v.motivo || '–'}</td>
+        <td class="td-info">${v.infoTecnico || '–'}</td>
+        <td><button class="btn-excluir-linha" onclick="excluirVisita(${v.id})" title="Excluir">✕</button></td>
+      </tr>`).join('');
+
+    return `
+      <div class="bloco-data">
+        <div class="header-data">📅 ${dataFormatada} VISITA DE FISCALIZAÇÃO JB &nbsp;·&nbsp; ${totalVisitas} VISITA${totalVisitas > 1 ? 'S' : ''}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Data / Hora</th>
+              <th>Técnico</th>
+              <th>Caixa (CTO)</th>
+              <th>End. da Caixa</th>
+              <th>Porta</th>
+              <th>Lacre</th>
+              <th>Cliente</th>
+              <th>End. do Cliente</th>
+              <th>Telefone</th>
+              <th>Motivo da Ordem</th>
+              <th>Inf. do Técnico</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+  }).join('');
+}
+
+// ──────────────────────────────────────────
+// IMPORTAR DO SISTEMA (formato TSV)
+// ──────────────────────────────────────────
+function importarCliente() {
+  const texto = document.getElementById('inp-importar').value.trim();
+  if (!texto) return;
+
+  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  const temTab = linhas.some(l => l.includes('\t'));
+
+  if (temTab) {
+    // ── FORMATO DO SISTEMA: colunas separadas por tab ──
+    // Colunas: data/hora | técnico | cliente | endereço | telefone | motivo | info_tecnico
+    let importados = 0;
+    linhas.forEach(linha => {
+      const cols = linha.split('\t');
+      if (cols.length < 3) return;
+
+      // Pular linha de cabeçalho
+      if (cols[0].trim().toUpperCase().includes('DATA')) return;
+
+      // Colunas: 0=data/hora | 1=técnico | 2=cliente | 3=endereço cliente | 4=telefone
+      //          5=motivo | 6=(vazio) | 7=(vazio) | 8=info_tecnico
+      //          9=caixa | 10=endereço da caixa | 11=porta | 12=lacre
+      const dtRaw   = (cols[0]  || '').trim();
+      const tecnico = (cols[1]  || '').trim().toUpperCase();
+      const cliente = (cols[2]  || '').trim().toUpperCase();
+      const endRaw  = (cols[3]  || '').trim();
+      const telRaw  = (cols[4]  || '').trim();
+      const motivo  = (cols[5]  || '').trim();
+      const infoTec = (cols[8]  || '').trim();
+      const caixa   = (cols[9]  || '').trim().toUpperCase();
+      const endCaixaRaw = (cols[10] || '').trim();
+      const porta   = (cols[11] || '').trim();
+      const lacre   = (cols[12] || '').trim();
+
+      // Converter data DD/MM/YYYY HH:MM:SS → data: YYYY-MM-DD, hora: HH:MM
+      let data = '', hora = '';
+      const mDt = dtRaw.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+      if (mDt) {
+        data = `${mDt[3]}-${mDt[2]}-${mDt[1]}`;
+        hora = `${mDt[4]}:${mDt[5]}`;
+      }
+
+      // Limpar endereço: extrair partes úteis do formato do sistema
+      // "Endereço: Rua X CEP: XXXXX Número: N Condomínio: Bairro: B Apartamento: - Cidade: C Complemento: K"
+      let endereco = endRaw;
+      const mRua  = endRaw.match(/Endere[çc]o:\s*([^C]+?)(?:\s+CEP:|$)/i);
+      const mNum  = endRaw.match(/N[úu]mero:\s*(\S+)/i);
+      const mComp = endRaw.match(/Complemento:\s*([^R]+?)(?:\s+Refer|$)/i);
+      const mBairro = endRaw.match(/Bairro:\s*([^A]+?)(?:\s+Apartamento:|$)/i);
+      const mCEP  = endRaw.match(/CEP:\s*([\d-]+)/i);
+      if (mRua) {
+        const rua  = mRua[1].trim();
+        const num  = mNum  ? mNum[1].trim()  : '';
+        const comp = mComp ? mComp[1].trim() : '';
+        const bairro = mBairro ? mBairro[1].trim() : '';
+        const cep  = mCEP  ? `CEP ${mCEP[1].trim()}` : '';
+        endereco = [rua, num, comp, bairro, 'São Paulo - SP', cep]
+          .filter(p => p && p !== '-').join(', ');
+      }
+
+      // Limpar telefone: pegar só os números no formato (XX) XXXXX-XXXX
+      const telefones = [...telRaw.matchAll(/\(?\d{2}\)?\s*[\d\s-]{8,10}/g)]
+        .map(m => m[0].replace(/\s+/g, ' ').trim())
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .slice(0, 2);
+      const telefone = telefones.join(' / ');
+
+      // Limpar endereço da caixa (mesmo formato do endereço do cliente)
+      let endCaixa = endCaixaRaw;
+      const mRuaCx = endCaixaRaw.match(/Endere[çc]o:\s*([^C]+?)(?:\s+CEP:|$)/i);
+      const mNumCx = endCaixaRaw.match(/N[úu]mero:\s*(\S+)/i);
+      const mCompCx = endCaixaRaw.match(/Complemento:\s*([^R]+?)(?:\s+Refer|$)/i);
+      const mBairroCx = endCaixaRaw.match(/Bairro:\s*([^A]+?)(?:\s+Apartamento:|$)/i);
+      const mCEPCx = endCaixaRaw.match(/CEP:\s*([\d-]+)/i);
+      if (mRuaCx) {
+        endCaixa = [
+          mRuaCx[1].trim(),
+          mNumCx  ? mNumCx[1].trim()    : '',
+          mCompCx ? mCompCx[1].trim()   : '',
+          mBairroCx ? mBairroCx[1].trim() : '',
+          mCEPCx  ? `CEP ${mCEPCx[1].trim()}` : ''
+        ].filter(p => p && p !== '-').join(', ');
+      }
+
+      if (!data || !cliente) return;
+
+      visitas.push({
+        id: Date.now() + importados,
+        data, hora, tecnico, caixa, endCaixa, porta, lacre,
+        cliente, endereco, telefone, motivo, infoTecnico: infoTec
+      });
+      importados++;
+    });
+
+    if (importados > 0) {
+      salvar();
+      renderizarVisitas();
+      atualizarDatalist();
+      document.getElementById('inp-importar').value = '';
+      toast(`✅ ${importados} visita${importados > 1 ? 's importadas' : ' importada'} com sucesso!`);
+    } else {
+      toast('⚠️ Nenhuma linha válida encontrada.', '#E53935');
+    }
+
+  } else {
+    // ── FORMATO LISTA (emojis 📍📞) → pré-preenche campos ──
+    let nome = '', endereco = '', tel = '';
+    linhas.forEach(l => {
+      if (l.includes('📍')) { endereco = l.replace('📍','').trim(); }
+      if (l.includes('📞') || l.includes('tel:')) {
+        tel = l.replace('📞','').replace('tel:','').replace('+55','').trim();
+        tel = tel.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+      }
+      if (!l.startsWith('http') && !l.includes('tel:') && !l.includes('wa.me') &&
+          !l.includes('maps') && !l.match(/^[📍📞💬🗺️]/) && l.length > 4 && !nome) {
+        nome = l.replace(/[\u{1F1E0}-\u{1F9FF}]|[0-9️⃣🔟]/gu, '').trim();
+      }
+    });
+    if (nome)     document.getElementById('inp-cliente').value = nome.toUpperCase();
+    if (endereco) document.getElementById('inp-endereco').value = endereco;
+    if (tel)      document.getElementById('inp-telefone').value = tel;
+    document.getElementById('inp-importar').value = '';
+    toast('✅ Campos preenchidos! Complete e adicione a visita.');
+  }
+}
+
+// ──────────────────────────────────────────
+// MODAL CONFIRMAÇÃO (substitui confirm() bloqueado em iframe)
+// ──────────────────────────────────────────
+function abrirModal(mensagem, aoConfirmar) {
+  document.getElementById('modal-mensagem').textContent = mensagem;
+  document.getElementById('modal-overlay').classList.add('ativo');
+  const btnOk = document.getElementById('modal-btn-ok');
+  btnOk.onclick = () => { fecharModal(); aoConfirmar(); };
+}
+function fecharModal() {
+  document.getElementById('modal-overlay').classList.remove('ativo');
+}
+
+// ──────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────
+function excluirVisita(id) {
+  abrirModal('Deseja excluir esta visita?', () => {
+    visitas = visitas.filter(v => v.id !== id);
+    salvar();
+    renderizarVisitas();
+    toast('🗑️ Visita removida.');
+  });
+}
+
+function limparTudo() {
+  abrirModal('Apagar TODAS as visitas? Esta ação não pode ser desfeita.', () => {
+    visitas = [];
+    salvar();
+    renderizarVisitas();
+    toast('🗑️ Todos os registros foram apagados.', '#E53935');
+  });
+}
+
+function exportarJSON() {
+  const blob = new Blob([JSON.stringify(visitas, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `visitas_silverNet_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  toast('⬇️ Arquivo exportado!');
+}
+
+function limparFormulario() {
+  ['inp-caixa','inp-end-caixa','inp-porta','inp-lacre',
+   'inp-cliente','inp-endereco','inp-telefone','inp-info-tecnico'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('inp-motivo').value = '';
+  document.getElementById('grupo-motivo-outro').style.display = 'none';
+  document.getElementById('inp-motivo-outro').value = '';
+}
+
+function atualizarDatalist() {
+  const nomes = [...new Set(visitas.map(v => v.tecnico))];
+  const dl = document.getElementById('lista-tecnicos');
+  dl.innerHTML = nomes.map(n => `<option value="${n}">`).join('');
+}
+
+function formatarTel(tel) {
+  if (!tel) return '–';
+  return tel;
+}
+
+function salvar() {
+  localStorage.setItem('sn_visitas', JSON.stringify(visitas));
+}
+
+function toast(msg, cor = '#4CAF50') {
+  const t = document.getElementById('toast');
+  t.style.background = cor;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
