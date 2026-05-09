@@ -324,57 +324,217 @@ function importar() {
   const texto = document.getElementById('inp-importar').value.trim();
   if (!texto) { toast('⚠️ Cole as linhas do sistema antes.', '#E53935'); return; }
 
-  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  // Detectar formato: emoji (📅) ou TSV (tab)
+  const ehEmoji = texto.includes('📅') || texto.includes('👨‍🔧');
   let n = 0;
 
-  linhas.forEach(linha => {
-    const c = linha.split('\t');
-    if (c.length < 3) return;
-    if (/^data/i.test(c[0].trim())) return;
+  if (ehEmoji) {
+    // ── FORMATO EMOJI NOVO (labels com ":" + valor na linha seguinte) ──
+    // Separar blocos por ━━━ dupla (bloco completo) ou simples (separa cliente/caixa no mesmo bloco)
+    // Cada visita completa tem pelo menos 📅 e 📦
+    const todosBlocos = texto.split(/━{3,}/).map(b => b.trim()).filter(Boolean);
 
-    // 0=data/hora | 1=técnico | 2=cliente | 3=end.cliente | 4=telefone
-    // 5=motivo | 6=info_tecnico | 7=caixa | 8=end.caixa | 9=porta | 10=lacre | 11=teste
-    const dtRaw     = (c[0]  || '').trim();
-    const tecnico   = (c[1]  || '').trim().toUpperCase();
-    const cliente   = (c[2]  || '').trim().toUpperCase();
-    const endCliRaw = (c[3]  || '').trim();
-    const telRaw    = (c[4]  || '').trim();
-    const motivo    = (c[5]  || '').trim();
-    const infoTec   = (c[6]  || '').trim();
-    const caixa     = (c[7]  || '').trim().toUpperCase();
-    const endCxRaw  = (c[8]  || '').trim();
-    const porta     = (c[9]  || '').trim();
-    const lacre     = (c[10] || '').trim();
-    const teste     = (c[11] || '').trim().toUpperCase();
-
-    let data = '', hora = '';
-    const mDt = dtRaw.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-    if (mDt) { data = `${mDt[3]}-${mDt[2]}-${mDt[1]}`; hora = `${mDt[4]}:${mDt[5]}`; }
-    if (!data || !cliente) return;
-
-    const limparEnd = raw => {
-      const mR = raw.match(/Endere[çc]o:\s*(.+?)(?=\s+CEP:)/i);
-      const mN = raw.match(/N[úu]mero:\s*(\S+)/i);
-      const mC = raw.match(/Complemento:\s*(.+?)(?=\s+Refer)/i);
-      const mB = raw.match(/Bairro:\s*(.+?)(?=\s+Apartamento:)/i);
-      const mP = raw.match(/CEP:\s*([\d\-]+)/i);
-      if (!mR) return raw;
-      return [mR[1].trim(), mN?mN[1].trim():'', mC?mC[1].trim():'', mB?mB[1].trim():'', mP?`CEP ${mP[1].trim()}`:'']
-        .filter(p => p && p !== '-').join(', ');
-    };
-
-    const fones = [...telRaw.matchAll(/\(\d{2}\)\s*[\d\s\-]{8,}/g)].map(m => m[0].trim()).slice(0, 2);
-    const telefone = fones.length ? fones.join(' / ') : telRaw.replace(/[A-Za-záéíóúÁÉÍÓÚ:]+/g,'').trim().slice(0,50);
-
-    visitas.push({
-      id: Date.now() + n,
-      data, hora, tecnico,
-      caixa, endCaixa: limparEnd(endCxRaw), porta, lacre, teste,
-      cliente, endereco: limparEnd(endCliRaw), telefone, motivo,
-      infoTecnico: infoTec
+    // Juntar blocos adjacentes que formam uma visita (o bloco do cliente + bloco da caixa)
+    // Um bloco de caixa começa com 📦 e não tem 📅
+    const visitasBlocos = [];
+    let atual = null;
+    todosBlocos.forEach(bloco => {
+      const temData  = bloco.includes('📅');
+      const temCaixa = bloco.includes('📦');
+      if (temData) {
+        if (atual) visitasBlocos.push(atual);
+        atual = bloco;
+      } else if (temCaixa && atual) {
+        atual += '\n' + bloco; // juntar bloco da caixa ao bloco do cliente
+      } else if (atual) {
+        atual += '\n' + bloco;
+      }
     });
-    n++;
-  });
+    if (atual) visitasBlocos.push(atual);
+
+    visitasBlocos.forEach(bloco => {
+      const linhas = bloco.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // Extrair href de tag <a href="...">
+      const extrairHref = str => {
+        const m = str.match(/href="([^"]+)"/);
+        return m ? m[1] : '';
+      };
+
+      // Montar mapa label → valor (valores podem ser multilinhas)
+      let campos = {};
+      let labelAtual = null;
+      let valorLinhas = [];
+
+      const salvarLabel = () => {
+        if (labelAtual) {
+          campos[labelAtual] = valorLinhas.join('\n').trim();
+        }
+      };
+
+      // Labels conhecidos pelos emojis no início da linha
+      const ehLabel = l => /^[📅👨‍🔧👤📍📞📲☎🛠📝📦🚪🔒🌐📌🗺]/.test(l);
+
+      linhas.forEach(l => {
+        // Remover tags HTML para texto limpo, mas guardar href
+        const href = extrairHref(l);
+        const semTag = l.replace(/<[^>]+>/g, '').trim();
+
+        if (semTag.startsWith('📅')) {
+          salvarLabel();
+          labelAtual = 'data'; valorLinhas = [semTag.replace(/📅\s*(DATA\s*:?\s*)?/i,'').trim()];
+        } else if (semTag.startsWith('👨')) {
+          salvarLabel(); labelAtual = 'tecnico'; valorLinhas = [];
+        } else if (semTag.startsWith('👤')) {
+          salvarLabel(); labelAtual = 'cliente'; valorLinhas = [];
+        } else if (semTag.startsWith('📍')) {
+          salvarLabel(); labelAtual = 'endereco'; valorLinhas = [semTag.replace(/📍\s*(ENDEREÇO\s*:?\s*)?/i,'').trim()].filter(Boolean);
+        } else if (semTag.startsWith('📲') || semTag.toUpperCase().includes('WHATSAPP')) {
+          salvarLabel(); labelAtual = 'whatsapp_label'; valorLinhas = href ? [href] : [];
+        } else if (semTag.startsWith('☎') || semTag.toUpperCase().includes('LIGAÇÃO') || semTag.toUpperCase().includes('LIGACAO')) {
+          salvarLabel(); labelAtual = 'ligacao_label'; valorLinhas = href ? [href] : [];
+        } else if (semTag.startsWith('🛠') || semTag.toUpperCase().startsWith('SERVI')) {
+          salvarLabel(); labelAtual = 'motivo';
+          const v = semTag.replace(/🛠\s*(SERVIÇO\s*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('📝')) {
+          salvarLabel(); labelAtual = 'info';
+          const v = semTag.replace(/📝\s*(INFORMAÇÃO\s*TÉCNICA\s*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('📦')) {
+          salvarLabel(); labelAtual = 'caixa';
+          const v = semTag.replace(/📦\s*(CAIXA\s*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('🚪')) {
+          salvarLabel(); labelAtual = 'porta';
+          const v = semTag.replace(/🚪\s*(PORTA\s*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('🔒')) {
+          salvarLabel(); labelAtual = 'lacre';
+          const v = semTag.replace(/🔒\s*(LACRE\s*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('🌐')) {
+          salvarLabel(); labelAtual = 'teste';
+          const v = semTag.replace(/🌐\s*(TESTE[^:]*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('📌')) {
+          salvarLabel(); labelAtual = 'endcaixa';
+          const v = semTag.replace(/📌\s*(ENDEREÇO\s*DA\s*CAIXA\s*:?\s*)?/i,'').trim();
+          valorLinhas = v ? [v] : [];
+        } else if (semTag.startsWith('🗺')) {
+          salvarLabel(); labelAtual = 'mapa_label'; valorLinhas = href ? [href] : [];
+        } else if (semTag.startsWith('📞') || semTag.toUpperCase().includes('TELEFONE')) {
+          salvarLabel(); labelAtual = 'telefones'; valorLinhas = [];
+        } else {
+          // Linha de valor
+          if (labelAtual) {
+            // Se é link HTML, pegar o href
+            if (href && (labelAtual === 'whatsapp_label' || labelAtual === 'ligacao_label' || labelAtual === 'mapa_label')) {
+              if (valorLinhas.length === 0) valorLinhas = [href];
+            } else if (semTag && semTag !== '—' && semTag !== '-') {
+              valorLinhas.push(semTag);
+            }
+          }
+        }
+      });
+      salvarLabel();
+
+      // Montar visita
+      const dtRaw   = campos['data'] || '';
+      const tecnico = (campos['tecnico'] || '').toUpperCase().trim();
+      const cliente = (campos['cliente'] || '').toUpperCase().trim();
+      const endereco = (campos['endereco'] || '').replace(/—/g,'-').trim();
+      const motivo  = (campos['motivo']  || '').trim();
+      const infoTec = (campos['info']    || '').replace(/^—$/, '').trim();
+      const caixa   = (campos['caixa']   || '').toUpperCase().trim();
+      const porta   = (campos['porta']   || '').trim();
+      const lacre   = (campos['lacre']   || '').toUpperCase().trim();
+      const teste   = (campos['teste']   || '').toUpperCase().trim();
+      const endCaixa = (campos['endcaixa'] || '').replace(/—/g,'-').trim();
+      const whatsapp = campos['whatsapp_label'] || '';
+      const ligacao  = campos['ligacao_label']  || '';
+      const mapa     = campos['mapa_label']     || '';
+
+      if (!dtRaw || !cliente) return;
+
+      let data='', hora='';
+      const mDt = dtRaw.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+      if (mDt) { data=`${mDt[3]}-${mDt[2]}-${mDt[1]}`; hora=`${mDt[4]}:${mDt[5]}`; }
+      if (!data) return;
+
+      // Telefone formatado a partir do link de ligação
+      let telefone = '';
+      if (ligacao) {
+        const num = ligacao.replace(/tel:\+?55/,'').replace(/\D/g,'');
+        if (num.length >= 10) telefone = `(${num.slice(0,2)}) ${num.slice(2,7)}-${num.slice(7,11)}`;
+      }
+
+      visitas.push({
+        id: Date.now() + n,
+        data, hora, tecnico,
+        caixa, endCaixa, porta, lacre, teste,
+        cliente, endereco, telefone, motivo, infoTecnico: infoTec,
+        whatsapp, ligacao, mapa
+      });
+      n++;
+    });
+
+  } else {
+    // ── FORMATO TSV (sistema / planilha) ──
+    const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+
+    linhas.forEach(linha => {
+      const c = linha.split('\t');
+      if (c.length < 3) return;
+      if (/^data/i.test(c[0].trim())) return;
+      // Pular linhas de cabeçalho de data tipo "06/05/2026 - VISITA"
+      if (/^\d{2}\/\d{2}\/\d{4}\s+-/.test(c[0].trim())) return;
+
+      // 0=data/hora | 1=técnico | 2=cliente | 3=end.cliente | 4=telefone
+      // 5=motivo | 6=info_tecnico | 7=caixa | 8=end.caixa | 9=porta | 10=lacre | 11=teste
+      const dtRaw     = (c[0]  || '').trim();
+      const tecnico   = (c[1]  || '').trim().toUpperCase();
+      const cliente   = (c[2]  || '').trim().toUpperCase();
+      const endCliRaw = (c[3]  || '').trim();
+      const telRaw    = (c[4]  || '').trim();
+      const motivo    = (c[5]  || '').trim();
+      const infoTec   = (c[6]  || '').trim();
+      const caixa     = (c[7]  || '').trim().toUpperCase();
+      const endCxRaw  = (c[8]  || '').trim();
+      const porta     = (c[9]  || '').trim();
+      const lacre     = (c[10] || '').trim();
+      const teste     = (c[11] || '').trim().toUpperCase();
+
+      let data = '', hora = '';
+      const mDt = dtRaw.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+      if (mDt) { data = `${mDt[3]}-${mDt[2]}-${mDt[1]}`; hora = `${mDt[4]}:${mDt[5]}`; }
+      if (!data || !cliente) return;
+
+      const limparEnd = raw => {
+        const mR = raw.match(/Endere[çc]o:\s*(.+?)(?=\s+CEP:)/i);
+        const mN = raw.match(/N[úu]mero:\s*(\S+)/i);
+        const mC = raw.match(/Complemento:\s*(.+?)(?=\s+Refer)/i);
+        const mB = raw.match(/Bairro:\s*(.+?)(?=\s+Apartamento:)/i);
+        const mP = raw.match(/CEP:\s*([\d\-]+)/i);
+        if (!mR) return raw;
+        return [mR[1].trim(), mN?mN[1].trim():'', mC?mC[1].trim():'', mB?mB[1].trim():'', mP?`CEP ${mP[1].trim()}`:'']
+          .filter(p => p && p !== '-').join(', ');
+      };
+
+      const fones = [...telRaw.matchAll(/\(\d{2}\)\s*[\d\s\-]{8,}/g)].map(m => m[0].trim()).slice(0,2);
+      const telefone = fones.length ? fones.join(' / ') : telRaw.replace(/[A-Za-záéíóúÁÉÍÓÚ:]+/g,'').trim().slice(0,50);
+
+      visitas.push({
+        id: Date.now() + n,
+        data, hora, tecnico,
+        caixa, endCaixa: limparEnd(endCxRaw), porta, lacre, teste,
+        cliente, endereco: limparEnd(endCliRaw), telefone, motivo,
+        infoTecnico: infoTec,
+        whatsapp: '', ligacao: '', mapa: ''
+      });
+      n++;
+    });
+  }
 
   if (n > 0) {
     salvar(); renderizar();
@@ -436,12 +596,25 @@ function renderizar() {
       const testeSim = testeVal.toUpperCase() === 'SIM';
       const testeColor = testeSim ? '#A5D6A7' : (testeVal === '–' ? '#888' : '#E57373');
 
+      // Links clicáveis
+      const endLink = v.mapa
+        ? `<a href="${v.mapa}" target="_blank" style="color:#80CBC4;text-decoration:none;" title="Abrir no Maps">📍 ${v.endereco||'–'}</a>`
+        : (v.endereco||'–');
+
+      const telCell = (() => {
+        const partes = [];
+        if (v.whatsapp) partes.push(`<a href="${v.whatsapp}" target="_blank" style="color:#25D366;text-decoration:none;font-size:13px" title="WhatsApp">💬</a>`);
+        if (v.ligacao)  partes.push(`<a href="${v.ligacao}"  target="_blank" style="color:#80CBC4;text-decoration:none;font-size:13px" title="Ligar">☎️</a>`);
+        const num = v.telefone || '';
+        return `<span style="font-size:10px">${num}</span> ${partes.join(' ')}`;
+      })();
+
       const cells = [
         `<div class="cel cel-data">${dtExibir}</div>`,
         `<div class="cel cel-tec">${v.tecnico||'–'}</div>`,
         `<div class="cel cel-cli">${v.cliente}</div>`,
-        `<div class="cel cel-end">${v.endereco||'–'}</div>`,
-        `<div class="cel cel-tel">${v.telefone||'–'}</div>`,
+        `<div class="cel cel-end">${endLink}</div>`,
+        `<div class="cel cel-tel">${telCell}</div>`,
         `<div class="cel cel-motivo">${v.motivo||'–'}</div>`,
         `<div class="cel cel-info">${v.infoTecnico||'–'}</div>`,
         `<div class="cel cel-caixa">${v.caixa||'–'}</div>`,
