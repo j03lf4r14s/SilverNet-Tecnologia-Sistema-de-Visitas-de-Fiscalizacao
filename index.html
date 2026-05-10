@@ -409,10 +409,19 @@ function importar() {
           lacre = apos(s,'🔒').toUpperCase();
         }
         else if (s.includes('🌐')) {
-          // 🌐 TESTES: ou 🌐 TESTE / IPV6 / VELOCIDADE: valor
-          const v = apos(s,'🌐');
-          if (v) teste = v.toUpperCase();
-          modoTeste = true;
+          // Pode ser "🌐 IPV6: valor" ou "🌐 TESTES: valor" ou "🌐 TESTE / IPV6..."
+          const up2 = s.toUpperCase();
+          if (up2.includes('IPV6')) {
+            ipv6 = apos(s,'🌐[^:]*').toUpperCase(); modoTeste=false;
+          } else {
+            const v = apos(s,'🌐');
+            if (v) teste = v.toUpperCase();
+            modoTeste = !v;
+          }
+        }
+        else if (s.includes('🚀')) {
+          // 🚀 VELOCIDADE: valor
+          velocidade = apos(s,'🚀[^:]*').toUpperCase(); modoTeste=false;
         }
         else if (s.includes('📌')) {
           const v = apos(s,'📌').replace(/—/g,'-'); endCaixa = v; modoEndCaixa = !v;
