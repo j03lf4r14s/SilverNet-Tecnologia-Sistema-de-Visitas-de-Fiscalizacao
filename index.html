@@ -329,23 +329,16 @@ function importar() {
   let n = 0;
 
   if (ehEmoji) {
-    // ── FORMATO EMOJI NOVO (labels com ":" + valor na linha seguinte) ──
-    // Separar blocos por ━━━ dupla (bloco completo) ou simples (separa cliente/caixa no mesmo bloco)
-    // Cada visita completa tem pelo menos 📅 e 📦
+    // ── FORMATO EMOJI (compacto ou multilinhas, qualquer variação) ──
     const todosBlocos = texto.split(/━{3,}/).map(b => b.trim()).filter(Boolean);
 
-    // Juntar blocos adjacentes que formam uma visita (o bloco do cliente + bloco da caixa)
-    // Um bloco de caixa começa com 📦 e não tem 📅
+    // Juntar bloco-cliente + bloco-caixa em uma visita
     const visitasBlocos = [];
     let atual = null;
     todosBlocos.forEach(bloco => {
-      const temData  = bloco.includes('📅');
-      const temCaixa = bloco.includes('📦');
-      if (temData) {
+      if (bloco.includes('📅')) {
         if (atual) visitasBlocos.push(atual);
         atual = bloco;
-      } else if (temCaixa && atual) {
-        atual += '\n' + bloco; // juntar bloco da caixa ao bloco do cliente
       } else if (atual) {
         atual += '\n' + bloco;
       }
@@ -355,105 +348,112 @@ function importar() {
     visitasBlocos.forEach(bloco => {
       const linhas = bloco.split('\n').map(l => l.trim()).filter(Boolean);
 
-      // Extrair href de tag <a href="...">
-      const extrairHref = str => {
-        const m = str.match(/href="([^"]+)"/);
-        return m ? m[1] : '';
-      };
+      const getHref = str => { const m = str.match(/href="([^"]+)"/); return m ? m[1] : ''; };
+      const strip   = str => str.replace(/<[^>]+>/g, '').trim();
+      // Valor após "EMOJI LABEL: valor" — tudo depois do primeiro ":"
+      const apos = (str, emojiRe) => str.replace(new RegExp(`^${emojiRe}\\s*[^:]*:\\s*`), '').replace(/<[^>]+>/g,'').trim();
 
-      // Montar mapa label → valor (valores podem ser multilinhas)
-      let campos = {};
-      let labelAtual = null;
-      let valorLinhas = [];
-
-      const salvarLabel = () => {
-        if (labelAtual) {
-          campos[labelAtual] = valorLinhas.join('\n').trim();
-        }
-      };
-
-      // Labels conhecidos pelos emojis no início da linha
-      const ehLabel = l => /^[📅👨‍🔧👤📍📞📲☎🛠📝📦🚪🔒🌐📌🗺]/.test(l);
+      let dtRaw='', tecnico='', cliente='', endereco='', endCaixa='',
+          whatsapp='', ligacao='', mapa='',
+          motivo='', infoTec='', caixa='', porta='', lacre='',
+          ipv6='', velocidade='', teste='';
+      let modoTeste=false, modoTec=false, modoCli=false,
+          modoEndereco=false, modoInfo=false, modoEndCaixa=false;
 
       linhas.forEach(l => {
-        // Remover tags HTML para texto limpo, mas guardar href
-        const href = extrairHref(l);
-        const semTag = l.replace(/<[^>]+>/g, '').trim();
+        const s  = strip(l);
+        const h  = getHref(l);
+        const up = s.toUpperCase();
 
-        if (semTag.startsWith('📅')) {
-          salvarLabel();
-          labelAtual = 'data'; valorLinhas = [semTag.replace(/📅\s*(DATA\s*:?\s*)?/i,'').trim()];
-        } else if (semTag.startsWith('👨')) {
-          salvarLabel(); labelAtual = 'tecnico'; valorLinhas = [];
-        } else if (semTag.startsWith('👤')) {
-          salvarLabel(); labelAtual = 'cliente'; valorLinhas = [];
-        } else if (semTag.startsWith('📍')) {
-          salvarLabel(); labelAtual = 'endereco'; valorLinhas = [semTag.replace(/📍\s*(ENDEREÇO\s*:?\s*)?/i,'').trim()].filter(Boolean);
-        } else if (semTag.startsWith('📲') || semTag.toUpperCase().includes('WHATSAPP')) {
-          salvarLabel(); labelAtual = 'whatsapp_label'; valorLinhas = href ? [href] : [];
-        } else if (semTag.startsWith('☎') || semTag.toUpperCase().includes('LIGAÇÃO') || semTag.toUpperCase().includes('LIGACAO')) {
-          salvarLabel(); labelAtual = 'ligacao_label'; valorLinhas = href ? [href] : [];
-        } else if (semTag.startsWith('🛠') || semTag.toUpperCase().startsWith('SERVI')) {
-          salvarLabel(); labelAtual = 'motivo';
-          const v = semTag.replace(/🛠\s*(SERVIÇO\s*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('📝')) {
-          salvarLabel(); labelAtual = 'info';
-          const v = semTag.replace(/📝\s*(INFORMAÇÃO\s*TÉCNICA\s*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('📦')) {
-          salvarLabel(); labelAtual = 'caixa';
-          const v = semTag.replace(/📦\s*(CAIXA\s*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('🚪')) {
-          salvarLabel(); labelAtual = 'porta';
-          const v = semTag.replace(/🚪\s*(PORTA\s*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('🔒')) {
-          salvarLabel(); labelAtual = 'lacre';
-          const v = semTag.replace(/🔒\s*(LACRE\s*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('🌐')) {
-          salvarLabel(); labelAtual = 'teste';
-          const v = semTag.replace(/🌐\s*(TESTE[^:]*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('📌')) {
-          salvarLabel(); labelAtual = 'endcaixa';
-          const v = semTag.replace(/📌\s*(ENDEREÇO\s*DA\s*CAIXA\s*:?\s*)?/i,'').trim();
-          valorLinhas = v ? [v] : [];
-        } else if (semTag.startsWith('🗺')) {
-          salvarLabel(); labelAtual = 'mapa_label'; valorLinhas = href ? [href] : [];
-        } else if (semTag.startsWith('📞') || semTag.toUpperCase().includes('TELEFONE')) {
-          salvarLabel(); labelAtual = 'telefones'; valorLinhas = [];
-        } else {
-          // Linha de valor
-          if (labelAtual) {
-            // Se é link HTML, pegar o href
-            if (href && (labelAtual === 'whatsapp_label' || labelAtual === 'ligacao_label' || labelAtual === 'mapa_label')) {
-              if (valorLinhas.length === 0) valorLinhas = [href];
-            } else if (semTag && semTag !== '—' && semTag !== '-') {
-              valorLinhas.push(semTag);
-            }
+        // Resetar flags de modo multi-linha ao encontrar novo emoji-label
+        const ehNovoLabel = /^[📅👨👤📍📞📲☎🛠📝📦🚪🔒🌐📌🗺]/.test(s);
+        if (ehNovoLabel) {
+          modoTec=false; modoCli=false; modoEndereco=false;
+          modoInfo=false; modoEndCaixa=false;
+          if (!s.includes('🌐') && !s.includes('IPV') && !s.includes('VELOC')) modoTeste=false;
+        }
+
+        if (s.includes('📅')) {
+          dtRaw = apos(s,'📅');
+          if (!dtRaw) modoTec=false; // próxima linha pode ter valor
+        }
+        else if (s.includes('👨')) {
+          const v = apos(s,'👨[^:]*'); tecnico = v ? v.toUpperCase() : ''; modoTec = !v;
+        }
+        else if (s.includes('👤')) {
+          const v = apos(s,'👤'); cliente = v ? v.toUpperCase() : ''; modoCli = !v;
+        }
+        else if (s.includes('📍')) {
+          const v = apos(s,'📍').replace(/—/g,'-'); endereco = v; modoEndereco = !v;
+        }
+        else if (s.includes('📲') || up.includes('WHATSAPP')) {
+          whatsapp = h || apos(s,'📲[^:]*');
+          if (!whatsapp) { /* próxima linha */ }
+        }
+        else if (s.includes('☎') || up.includes('LIGAÇÃO') || up.includes('LIGACAO')) {
+          ligacao = h || apos(s,'☎[^:]*');
+        }
+        else if (s.includes('🛠')) {
+          motivo = apos(s,'🛠[^:]*');
+        }
+        else if (s.includes('📝')) {
+          const v = apos(s,'📝[^:]*').replace(/^—$/,''); infoTec = v; modoInfo = !v;
+        }
+        else if (s.includes('📦')) {
+          caixa = apos(s,'📦').toUpperCase();
+        }
+        else if (s.includes('🚪')) {
+          porta = apos(s,'🚪');
+        }
+        else if (s.includes('🔒')) {
+          lacre = apos(s,'🔒').toUpperCase();
+        }
+        else if (s.includes('🌐')) {
+          // 🌐 TESTES: ou 🌐 TESTE / IPV6 / VELOCIDADE: valor
+          const v = apos(s,'🌐');
+          if (v) teste = v.toUpperCase();
+          modoTeste = true;
+        }
+        else if (s.includes('📌')) {
+          const v = apos(s,'📌').replace(/—/g,'-'); endCaixa = v; modoEndCaixa = !v;
+        }
+        else if (s.includes('🗺')) {
+          mapa = h || apos(s,'🗺[^:]*');
+        }
+        else if (s.includes('📞') || up.includes('TELEFONE')) {
+          // só label, ignorar
+        }
+        // ── Linhas de valor (sem emoji-label) ──
+        else {
+          if (modoTec)       { if (s) tecnico   = s.toUpperCase(); modoTec=false; }
+          else if (modoCli)  { if (s) cliente   = s.toUpperCase(); modoCli=false; }
+          else if (modoInfo) { if (s && s!=='—') infoTec = s;      modoInfo=false; }
+          else if (modoEndCaixa) { if (s) endCaixa = s.replace(/—/g,'-'); modoEndCaixa=false; }
+          else if (modoEndereco) {
+            // Endereço pode ser multilinhas — acumular até novo label
+            if (s && s!=='—') endereco = endereco ? endereco + ', ' + s : s;
+          }
+          else if (modoTeste) {
+            if (up.startsWith('IPV6'))        ipv6       = s.replace(/IPV6\s*/i,'').trim().toUpperCase();
+            else if (up.startsWith('VELOC'))  velocidade = s.replace(/VELOCIDADE\s*/i,'').trim().toUpperCase();
+            else if (s && s!=='—')            teste      = s.toUpperCase();
+          }
+          else if (h) {
+            // Links soltos
+            if (l.includes('wa.me') && !whatsapp)  whatsapp = h;
+            else if (l.includes('tel:') && !ligacao) ligacao = h;
+            else if (l.includes('maps') && !mapa)   mapa    = h;
           }
         }
       });
-      salvarLabel();
 
-      // Montar visita
-      const dtRaw   = campos['data'] || '';
-      const tecnico = (campos['tecnico'] || '').toUpperCase().trim();
-      const cliente = (campos['cliente'] || '').toUpperCase().trim();
-      const endereco = (campos['endereco'] || '').replace(/—/g,'-').trim();
-      const motivo  = (campos['motivo']  || '').trim();
-      const infoTec = (campos['info']    || '').replace(/^—$/, '').trim();
-      const caixa   = (campos['caixa']   || '').toUpperCase().trim();
-      const porta   = (campos['porta']   || '').trim();
-      const lacre   = (campos['lacre']   || '').toUpperCase().trim();
-      const teste   = (campos['teste']   || '').toUpperCase().trim();
-      const endCaixa = (campos['endcaixa'] || '').replace(/—/g,'-').trim();
-      const whatsapp = campos['whatsapp_label'] || '';
-      const ligacao  = campos['ligacao_label']  || '';
-      const mapa     = campos['mapa_label']     || '';
+      // Consolidar TESTE com IPV6 e VELOCIDADE
+      if (ipv6 || velocidade) {
+        const p = [];
+        if (ipv6)       p.push(`IPV6:${ipv6}`);
+        if (velocidade) p.push(`VEL:${velocidade}`);
+        teste = p.join(' | ');
+      }
 
       if (!dtRaw || !cliente) return;
 
@@ -462,7 +462,6 @@ function importar() {
       if (mDt) { data=`${mDt[3]}-${mDt[2]}-${mDt[1]}`; hora=`${mDt[4]}:${mDt[5]}`; }
       if (!data) return;
 
-      // Telefone formatado a partir do link de ligação
       let telefone = '';
       if (ligacao) {
         const num = ligacao.replace(/tel:\+?55/,'').replace(/\D/g,'');
